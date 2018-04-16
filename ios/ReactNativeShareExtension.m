@@ -4,6 +4,8 @@
 
 #define URL_IDENTIFIER @"public.url"
 #define IMAGE_IDENTIFIER @"public.image"
+#define VIDEO_IDENTIFIER @"com.apple.quicktime-movie"
+#define VIDEO_IDENTIFIER2 @"public.mpeg-4"
 #define TEXT_IDENTIFIER (NSString *)kUTTypePlainText
 
 NSExtensionContext* extensionContext;
@@ -59,17 +61,52 @@ RCT_REMAP_METHOD(data,
     }];
 }
 
-- (void)extractDataFromContext:(NSExtensionContext *)context withCallback:(void(^)(NSString *value, NSString* contentType, NSException *exception))callback {
+// * locationData: (object) Ein Object mit den Daten title, description, location ({ latitude, longitude }) und categoryId des neuen Videos
+RCT_REMAP_METHOD(uploadVideoToApi,
+                  url:(NSString *) url
+                  sharedMedia:(NSString *) sharedMedia
+                  accessToken: (NSString *) accessToken
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+    NSURL *URL = [NSURL URLWithString:@""];
     
+    NSMutableURLRequest* request = [NSMutableURLRequest requestWithURL:URL];
+    [request setHTTPMethod:@"POST"];
+    [request addValue:@"Authorization" forHTTPHeaderField:[NSString stringWithFormat: @"Bearer %@", accessToken]];
+    
+    NSURLSessionConfiguration *config = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"com.upload"];
+    config.sharedContainerIdentifier = @"group.visitdd";
+    config.HTTPMaximumConnectionsPerHost = 1;
+    
+    
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
+    
+    NSURLSessionUploadTask *uploadTask = [session uploadTaskWithRequest:request fromFile:[NSURL URLWithString:sharedMedia] completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        if(error != nil) {
+            reject(@"error", error.description, nil);
+        } else {
+            resolve(@"success upload");
+        }
+    }];
+    
+    
+    
+    [uploadTask resume];
+}
+
+- (void)extractDataFromContext:(NSExtensionContext *)context withCallback:(void(^)(NSString *value, NSString* contentType, NSException *exception))callback {
     @try {
         NSExtensionItem *item = [context.inputItems firstObject];
         NSArray *attachments = item.attachments;
 
         __block NSItemProvider *urlProvider = nil;
         __block NSItemProvider *imageProvider = nil;
+        __block NSItemProvider *videoProvider = nil;
+        __block NSItemProvider *videoProvider2 = nil;
         __block NSItemProvider *textProvider = nil;
-
+        
         [attachments enumerateObjectsUsingBlock:^(NSItemProvider *provider, NSUInteger idx, BOOL *stop) {
+            
             if([provider hasItemConformingToTypeIdentifier:URL_IDENTIFIER]) {
                 urlProvider = provider;
                 *stop = YES;
@@ -78,6 +115,12 @@ RCT_REMAP_METHOD(data,
                 *stop = YES;
             } else if ([provider hasItemConformingToTypeIdentifier:IMAGE_IDENTIFIER]){
                 imageProvider = provider;
+                *stop = YES;
+            } else if ([provider hasItemConformingToTypeIdentifier:VIDEO_IDENTIFIER]){
+                videoProvider = provider;
+                *stop = YES;
+            } else if ([provider hasItemConformingToTypeIdentifier:VIDEO_IDENTIFIER2]){
+                videoProvider2 = provider;
                 *stop = YES;
             }
         }];
@@ -92,31 +135,10 @@ RCT_REMAP_METHOD(data,
             }];
         } else if (imageProvider) {
             [imageProvider loadItemForTypeIdentifier:IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
-                
-                /**
-                 * Save the image to NSTemporaryDirectory(), which cleans itself tri-daily.
-                 * This is necessary as the iOS 11 screenshot editor gives us a UIImage, while
-                 * sharing from Photos and similar apps gives us a URL
-                 * Therefore the solution is to save a UIImage, either way, and return the local path to that temp UIImage
-                 * This path will be sent to React Native and can be processed and accessed RN side.
-                **/
-                
-                UIImage *sharedImage;
-                NSString *filePath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"RNSE_TEMP_IMG"];
-                NSString *fullPath = [filePath stringByAppendingPathExtension:@"png"];
-                
-                if ([(NSObject *)item isKindOfClass:[UIImage class]]){
-                    sharedImage = (UIImage *)item;
-                }else if ([(NSObject *)item isKindOfClass:[NSURL class]]){
-                    NSURL* url = (NSURL *)item;
-                    NSData *data = [NSData dataWithContentsOfURL:url];
-                    sharedImage = [UIImage imageWithData:data];
-                }
-                
-                [UIImagePNGRepresentation(sharedImage) writeToFile:fullPath atomically:YES];
-                
+                NSURL *url = (NSURL *)item;
+
                 if(callback) {
-                    callback(fullPath, [fullPath pathExtension], nil);
+                    callback([url absoluteString], [[[url absoluteString] pathExtension] lowercaseString], nil);
                 }
             }];
         } else if (textProvider) {
@@ -127,6 +149,24 @@ RCT_REMAP_METHOD(data,
                     callback(text, @"text/plain", nil);
                 }
             }];
+        } else if (videoProvider) {
+            [videoProvider loadItemForTypeIdentifier:VIDEO_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                NSURL *url = (NSURL *)item;
+                //https://stackoverflow.com/questions/47506856/saving-video-to-documentsdirectory
+                if(callback) {
+                    callback([url absoluteString], [[[url absoluteString] pathExtension] lowercaseString], nil);
+                }
+            }];
+            
+        } else if (videoProvider2) {
+            [videoProvider2 loadItemForTypeIdentifier:VIDEO_IDENTIFIER2 options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                NSURL *url = (NSURL *)item;
+                //https://stackoverflow.com/questions/47506856/saving-video-to-documentsdirectory
+                if(callback) {
+                    callback([url absoluteString], [[[url absoluteString] pathExtension] lowercaseString], nil);
+                }
+            }];
+            
         } else {
             if(callback) {
                 callback(nil, nil, [NSException exceptionWithName:@"Error" reason:@"couldn't find provider" userInfo:nil]);
@@ -139,7 +179,5 @@ RCT_REMAP_METHOD(data,
         }
     }
 }
-
-
 
 @end
