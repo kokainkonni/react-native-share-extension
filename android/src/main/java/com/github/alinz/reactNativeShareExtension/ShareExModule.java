@@ -2,6 +2,10 @@ package com.github.alinz.reactNativeShareExtension;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
+import android.provider.MediaStore;
+import android.database.Cursor;
+import android.content.Context;
 import android.util.Log;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -29,6 +33,18 @@ public class ShareExModule extends ReactContextBaseJavaModule implements Activit
         promise.resolve(processIntent());
     }
 
+    /*public String getPath(Uri uri) {
+        String[] projection = { MediaStore.Video.Media.DATA };
+        Cursor cursor = getContentResolver().query(uri, projection, null, null, null);
+        if (cursor != null) {
+            int column_index = cursor
+                    .getColumnIndexOrThrow(MediaStore.Video.Media.DATA);
+            cursor.moveToFirst();
+            return cursor.getString(column_index);
+        } else
+            return null;
+    }*/
+
     protected WritableMap processIntent() {
 
         Activity currentActivity = getCurrentActivity();
@@ -44,10 +60,23 @@ public class ShareExModule extends ReactContextBaseJavaModule implements Activit
             type = "";
         }
 
-        //if you want to support more, just add more things here.
-        //at the moment we are only supporting browser URL
+
         if (Intent.ACTION_SEND.equals(action) && "text/plain".equals(type)) {
             value = intent.getStringExtra(Intent.EXTRA_TEXT);
+        }
+
+        //type.equals("video/*")
+
+       if (Intent.ACTION_SEND.equals(action)) {
+
+            Uri selectedImageUri = intent.getData();
+
+           String filemanagerstring = selectedImageUri.getPath();
+           // String selectedImagePath = getPath(selectedImageUri);
+
+            if (filemanagerstring != null) {
+                value = filemanagerstring;
+            }
         }
 
         map.putString("type", type);
@@ -68,4 +97,3 @@ public class ShareExModule extends ReactContextBaseJavaModule implements Activit
     public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) { }
 
     public void onNewIntent(Intent intent) {  }
-}
