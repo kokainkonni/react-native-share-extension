@@ -60,7 +60,12 @@ public class ShareModule extends ReactContextBaseJavaModule {
           Uri uri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
          value = "file://" + RealPathUtil.getRealPathFromURI(currentActivity, uri);
 
-       } else {
+       } else if (Intent.ACTION_SEND.equals(action) && ("video/*".equals(type) || "video/mp4".equals(type) || "video/mov".equals(type)) ) {
+            Uri uri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            value = "file://" + RealPathUtil.getRealPathFromURI(currentActivity, uri);
+        }
+
+       else {
          value = "";
        }
       } else {

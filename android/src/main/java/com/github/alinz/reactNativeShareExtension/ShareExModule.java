@@ -70,7 +70,6 @@ public class ShareExModule extends ReactContextBaseJavaModule implements Activit
         if (Intent.ACTION_SEND.equals(action)) {
 
             Uri selectedImageUri = intent.getData();
-
             String filemanagerstring = selectedImageUri.getPath();
             // String selectedImagePath = getPath(selectedImageUri);
 
