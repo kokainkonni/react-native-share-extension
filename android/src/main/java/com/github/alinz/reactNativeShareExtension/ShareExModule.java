@@ -67,12 +67,12 @@ public class ShareExModule extends ReactContextBaseJavaModule implements Activit
 
         //type.equals("video/*")
 
-       if (Intent.ACTION_SEND.equals(action)) {
+        if (Intent.ACTION_SEND.equals(action)) {
 
             Uri selectedImageUri = intent.getData();
 
-           String filemanagerstring = selectedImageUri.getPath();
-           // String selectedImagePath = getPath(selectedImageUri);
+            String filemanagerstring = selectedImageUri.getPath();
+            // String selectedImagePath = getPath(selectedImageUri);
 
             if (filemanagerstring != null) {
                 value = filemanagerstring;
@@ -93,7 +93,8 @@ public class ShareExModule extends ReactContextBaseJavaModule implements Activit
     }
 
     public void onActivityResult(final int requestCode, final int resultCode, final Intent data) { }
-  
+
     public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) { }
 
     public void onNewIntent(Intent intent) {  }
+}
